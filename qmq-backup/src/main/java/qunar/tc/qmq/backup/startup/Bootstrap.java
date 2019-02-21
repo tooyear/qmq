@@ -1,17 +1,12 @@
 package qunar.tc.qmq.backup.startup;
 
-import qunar.tc.qmq.backup.service.BackupKeyGenerator;
-import qunar.tc.qmq.backup.service.ConsumeTrackService;
-import qunar.tc.qmq.backup.service.DicService;
-import qunar.tc.qmq.backup.service.OffsetManager;
+import qunar.tc.qmq.backup.service.*;
 import qunar.tc.qmq.backup.service.impl.DbDicService;
 import qunar.tc.qmq.backup.service.impl.IndexServiceImpl;
 import qunar.tc.qmq.backup.store.ActionStore;
+import qunar.tc.qmq.backup.store.BackupMessageLog;
 import qunar.tc.qmq.backup.store.LocalKVStore;
-import qunar.tc.qmq.backup.store.impl.HBaseActionStore;
-import qunar.tc.qmq.backup.store.impl.HBaseIndexStore;
-import qunar.tc.qmq.backup.store.impl.JdbcDicStore;
-import qunar.tc.qmq.backup.store.impl.RocksDBStore;
+import qunar.tc.qmq.backup.store.impl.*;
 import qunar.tc.qmq.configuration.BrokerConfig;
 import qunar.tc.qmq.configuration.DynamicConfig;
 import qunar.tc.qmq.configuration.DynamicConfigLoader;
@@ -67,6 +62,9 @@ public class Bootstrap {
         }));
 
         slaveSyncManager.startSync();
+
+        DFSUploader dfsUploader = new DFSUploader(messageLog, new HDFSMessageLog(config));
+        dfsUploader.start();
     }
 
     private static void safeClose(AutoCloseable closeable) {

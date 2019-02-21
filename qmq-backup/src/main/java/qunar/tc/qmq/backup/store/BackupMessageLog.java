@@ -1,4 +1,4 @@
-package qunar.tc.qmq.backup.startup;
+package qunar.tc.qmq.backup.store;
 
 import qunar.tc.qmq.backup.model.BackupMessage;
 import qunar.tc.qmq.store.*;
@@ -36,5 +36,16 @@ public class BackupMessageLog extends MessageLog {
             payload.get(messageId);
             return new BackupMessage(subject, messageId, createTime, sequence, wroteOffset, wroteBytes, baseOffset);
         }
+    }
+
+    public LogSegment getFirstInActiveSegment() {
+        LogSegment first = logManager.firstSegment();
+        LogSegment latest = logManager.latestSegment();
+        if (first == latest) return null;
+        return first;
+    }
+
+    public void delete(LogSegment logSegment) {
+        logManager.deleteSegmentsBeforeOffset(logSegment.getBaseOffset() + 1);
     }
 }

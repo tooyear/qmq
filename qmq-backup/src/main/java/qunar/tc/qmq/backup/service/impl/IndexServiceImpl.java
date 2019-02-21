@@ -1,10 +1,10 @@
 package qunar.tc.qmq.backup.service.impl;
 
+import qunar.tc.qmq.backup.model.BackupMessage;
 import qunar.tc.qmq.backup.model.Index;
 import qunar.tc.qmq.backup.service.BackupKeyGenerator;
 import qunar.tc.qmq.backup.service.DicService;
 import qunar.tc.qmq.backup.service.IndexService;
-import qunar.tc.qmq.backup.model.BackupMessage;
 import qunar.tc.qmq.backup.store.IndexStore;
 import qunar.tc.qmq.utils.RetrySubjectUtils;
 
@@ -33,6 +33,9 @@ public class IndexServiceImpl implements IndexService {
             byte[] key = null;
             if (RetrySubjectUtils.isRetrySubject(message.getSubject())) {
                 key = keyGenerator.generateRetryKey(message);
+            } else if (RetrySubjectUtils.isDeadRetrySubject(message.getSubject())) {
+                key = keyGenerator.generateKey(message);
+                //add action for dead message(sequence = -1)
             } else {
                 key = keyGenerator.generateKey(message);
             }
