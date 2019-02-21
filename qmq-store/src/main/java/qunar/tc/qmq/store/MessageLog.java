@@ -40,15 +40,15 @@ public class MessageLog implements AutoCloseable {
     public static final int MIN_RECORD_BYTES = 13;
 
     private final StorageConfig config;
-    private final ConsumerLogManager consumerLogManager;
-    private final LogManager logManager;
+    private final SequenceManager sequenceManager;
+    protected final LogManager logManager;
     private final MessageAppender<RawMessage, MessageSequence> messageAppender = new RawMessageAppender();
 
-    public MessageLog(final StorageConfig config, final ConsumerLogManager consumerLogManager) {
+    public MessageLog(final StorageConfig config, final SequenceManager sequenceManager) {
         this.config = config;
-        this.consumerLogManager = consumerLogManager;
+        this.sequenceManager = sequenceManager;
         this.logManager = new LogManager(new File(config.getMessageLogStorePath()), PER_SEGMENT_FILE_SIZE, config, new MessageLogSegmentValidator());
-        consumerLogManager.adjustConsumerLogMinOffset(logManager.firstSegment());
+        sequenceManager.adjustConsumerLogMinOffset(logManager.firstSegment());
     }
 
     private static int recordSize(final int subjectSize, final int payloadSize) {
@@ -158,7 +158,7 @@ public class MessageLog implements AutoCloseable {
 
     public void clean() {
         logManager.deleteExpiredSegments(config.getMessageLogRetentionMs(), segment -> {
-            consumerLogManager.adjustConsumerLogMinOffset(logManager.firstSegment());
+            sequenceManager.adjustConsumerLogMinOffset(logManager.firstSegment());
 
             final String fileName = StoreUtils.offsetFileNameForSegment(segment);
             final String path = config.getMessageLogStorePath();
@@ -173,7 +173,7 @@ public class MessageLog implements AutoCloseable {
         });
     }
 
-    public MessageLogMetaVisitor newVisitor(long iterateFrom) {
+    public MessageLogVisitor newVisitor(long iterateFrom) {
         return new MessageLogMetaVisitor(logManager, iterateFrom);
     }
 
@@ -263,7 +263,7 @@ public class MessageLog implements AutoCloseable {
                 }
                 return new AppendMessageResult<>(AppendMessageStatus.END_OF_FILE, wroteOffset, freeSpace, null);
             } else {
-                final long sequence = consumerLogManager.getOffsetOrDefault(subject, 0);
+                final long sequence = sequenceManager.getOffsetOrDefault(subject, 0);
 
                 int headerSize = recordSize - message.getBodySize();
                 workingBuffer.limit(headerSize);
@@ -278,7 +278,7 @@ public class MessageLog implements AutoCloseable {
                 targetBuffer.put(workingBuffer.array(), 0, headerSize);
                 targetBuffer.put(message.getBody().nioBuffer());
 
-                consumerLogManager.incOffset(subject);
+                sequenceManager.incOffset(subject);
 
                 final long payloadOffset = wroteOffset + headerSize;
                 return new AppendMessageResult<>(AppendMessageStatus.SUCCESS, wroteOffset, recordSize, new MessageSequence(sequence, payloadOffset));

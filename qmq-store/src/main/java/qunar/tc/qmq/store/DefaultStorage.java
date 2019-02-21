@@ -92,7 +92,7 @@ public class DefaultStorage implements Storage {
         this.messageEventBus = new FixedExecOrderEventBus();
         this.messageEventBus.subscribe(MessageLogMeta.class, new BuildConsumerLogEventListener(consumerLogManager));
         this.messageEventBus.subscribe(MessageLogMeta.class, consumerLogFlusher);
-        this.messageLogIterateService = new MessageLogIterateService(messageLog, checkpointManager, messageEventBus);
+        this.messageLogIterateService = new MessageLogIterateService(messageLog, checkpointManager.getMessageCheckpointOffset(), messageEventBus);
 
         this.logCleanerExecutor = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder().setNameFormat("log-cleaner-%d").build());
 

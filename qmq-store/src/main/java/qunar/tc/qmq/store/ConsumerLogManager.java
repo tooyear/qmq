@@ -36,7 +36,7 @@ import java.util.concurrent.ConcurrentMap;
  * @author keli.wang
  * @since 2017/8/19
  */
-public class ConsumerLogManager implements AutoCloseable {
+public class ConsumerLogManager implements SequenceManager, AutoCloseable {
     private static final Logger LOG = LoggerFactory.getLogger(ConsumerLogManager.class);
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -106,11 +106,13 @@ public class ConsumerLogManager implements AutoCloseable {
         return logs.get(subject);
     }
 
-    long getOffsetOrDefault(final String subject, final long defaultVal) {
+    @Override
+    public long getOffsetOrDefault(final String subject, final long defaultVal) {
         return offsets.getOrDefault(subject, defaultVal);
     }
 
-    long incOffset(final String subject) {
+    @Override
+    public long incOffset(final String subject) {
         return offsets.compute(subject, (key, offset) -> offset == null ? 1 : offset + 1);
     }
 
@@ -131,7 +133,8 @@ public class ConsumerLogManager implements AutoCloseable {
         }
     }
 
-    void adjustConsumerLogMinOffset(LogSegment firstSegment) {
+    @Override
+    public void adjustConsumerLogMinOffset(LogSegment firstSegment) {
         if (firstSegment == null) return;
 
         final String fileName = StoreUtils.offsetFileNameForSegment(firstSegment);

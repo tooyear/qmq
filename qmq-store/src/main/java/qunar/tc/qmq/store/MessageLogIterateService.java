@@ -39,25 +39,25 @@ public class MessageLogIterateService implements AutoCloseable {
     private final LongAdder iterateFrom;
     private volatile boolean stop = false;
 
-    public MessageLogIterateService(final MessageLog log, final CheckpointManager checkpointManager, final FixedExecOrderEventBus dispatcher) {
+    public MessageLogIterateService(final MessageLog log, final long checkpoint, final FixedExecOrderEventBus dispatcher) {
         this.log = log;
         this.dispatcher = dispatcher;
         this.dispatcherThread = new Thread(new Dispatcher());
         this.dispatcherThread.setName("MessageLogIterator");
         this.iterateFrom = new LongAdder();
-        this.iterateFrom.add(initialMessageIterateFrom(log, checkpointManager));
+        this.iterateFrom.add(initialMessageIterateFrom(log, checkpoint));
 
         QMon.replayMessageLogLag(() -> (double) replayMessageLogLag());
     }
 
-    private long initialMessageIterateFrom(final MessageLog log, final CheckpointManager checkpointManager) {
-        if (checkpointManager.getMessageCheckpointOffset() <= 0) {
+    private long initialMessageIterateFrom(final MessageLog log, final long checkpoint) {
+        if (checkpoint <= 0) {
             return log.getMaxOffset();
         }
-        if (checkpointManager.getMessageCheckpointOffset() > log.getMaxOffset()) {
+        if (checkpoint > log.getMaxOffset()) {
             return log.getMaxOffset();
         }
-        return checkpointManager.getMessageCheckpointOffset();
+        return checkpoint;
     }
 
     public void start() {
@@ -107,7 +107,7 @@ public class MessageLogIterateService implements AutoCloseable {
 
         private void processLog() {
             final long startOffset = iterateFrom.longValue();
-            final MessageLogMetaVisitor visitor = log.newVisitor(startOffset);
+            final MessageLogVisitor visitor = log.newVisitor(startOffset);
             if (startOffset != visitor.getStartOffset()) {
                 iterateFrom.reset();
                 iterateFrom.add(visitor.getStartOffset());

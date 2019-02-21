@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package qunar.tc.qmq.meta.store;
+package qunar.tc.qmq.jdbc;
 
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;

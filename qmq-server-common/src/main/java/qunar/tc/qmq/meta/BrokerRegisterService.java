@@ -101,7 +101,7 @@ public class BrokerRegisterService implements Disposable {
                     datagram.release();
                 }
             }
-        }catch (Exception e){
+        } catch (Exception e) {
             LOG.error("Heartbeat error", e);
         }
     }

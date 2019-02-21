@@ -27,7 +27,7 @@ import qunar.tc.qmq.meta.BrokerGroupKind;
 import qunar.tc.qmq.meta.BrokerState;
 import qunar.tc.qmq.meta.model.SubjectInfo;
 import qunar.tc.qmq.meta.model.SubjectRoute;
-import qunar.tc.qmq.meta.store.JdbcTemplateHolder;
+import qunar.tc.qmq.jdbc.JdbcTemplateHolder;
 import qunar.tc.qmq.meta.store.Store;
 import qunar.tc.qmq.protocol.consumer.MetaInfoRequest;
 

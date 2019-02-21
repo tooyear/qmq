@@ -22,7 +22,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import qunar.tc.qmq.meta.model.ClientOfflineState;
 import qunar.tc.qmq.base.OnOfflineState;
-import qunar.tc.qmq.meta.store.JdbcTemplateHolder;
+import qunar.tc.qmq.jdbc.JdbcTemplateHolder;
 import qunar.tc.qmq.meta.store.ClientOfflineStore;
 
 import java.sql.PreparedStatement;
