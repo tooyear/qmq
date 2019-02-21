@@ -2,6 +2,7 @@ package qunar.tc.qmq.backup.startup;
 
 import qunar.tc.qmq.backup.model.BackupMessage;
 import qunar.tc.qmq.store.*;
+import qunar.tc.qmq.utils.PayloadHolderUtils;
 
 import java.nio.ByteBuffer;
 
@@ -25,9 +26,15 @@ public class BackupMessageLog extends MessageLog {
         }
 
         @Override
-        protected BackupMessage createRecord(String subject, long sequence, long wroteOffset, int wroteBytes, short headerSize, long baseOffset, ByteBuffer currentBuffer) {
-
-            return new BackupMessage(subject, null, -1, sequence, wroteOffset, wroteBytes, baseOffset);
+        protected BackupMessage createRecord(String subject, long sequence, long wroteOffset, int wroteBytes, short headerSize, long baseOffset, ByteBuffer payload) {
+            payload.get();
+            long createTime = payload.getLong();
+            payload.position(payload.position() + 8);
+            PayloadHolderUtils.readString(payload);
+            short messageIdLen = payload.getShort();
+            byte[] messageId = new byte[messageIdLen];
+            payload.get(messageId);
+            return new BackupMessage(subject, messageId, createTime, sequence, wroteOffset, wroteBytes, baseOffset);
         }
     }
 }

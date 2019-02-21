@@ -134,12 +134,14 @@ public abstract class MessageLogVisitor<T> {
             }
 
             final short headerSize = (short) (buffer.position() - startPos);
+            ByteBuffer payload = buffer.slice();
+            payload.limit(payloadSize);
             buffer.position(buffer.position() + payloadSize);
             final int wroteBytes = buffer.position() - startPos;
             visitedBufferSize.addAndGet(wroteBytes);
             String subject = new String(subjectBytes, StandardCharsets.UTF_8);
 
-            return Optional.of(createRecord(subject, sequence, wroteOffset, wroteBytes, headerSize, currentSegment.getBaseOffset(), buffer));
+            return Optional.of(createRecord(subject, sequence, wroteOffset, wroteBytes, headerSize, currentSegment.getBaseOffset(), payload));
         }
     }
 
