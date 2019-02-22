@@ -38,6 +38,12 @@ public class BackupKeyGenerator {
         return generateRowKey(new byte[][]{toUtf8(subjectId), toUtf8(messageIdKey), toUtf8(messageCreateTimeKey)});
     }
 
+    public byte[] generatePrefixKey(String subject, long time) {
+        String subjectId = dicService.name2Id(subject);
+        String messageCreateTimeKey = generateDateKey(new Date(time));
+        return generateRowKey(new byte[][]{toUtf8(subjectId), toUtf8(messageCreateTimeKey)});
+    }
+
     private String generateDateKey(Date key) {
         String formatText = DATE_FORMATTER.get().format(key);
         Long dateLong = MAX_LONG - Integer.parseInt(formatText);

@@ -1,12 +1,17 @@
 package qunar.tc.qmq.backup.startup;
 
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.servlet.ServletHolder;
 import qunar.tc.qmq.backup.service.*;
 import qunar.tc.qmq.backup.service.impl.DbDicService;
 import qunar.tc.qmq.backup.service.impl.IndexServiceImpl;
 import qunar.tc.qmq.backup.store.ActionStore;
 import qunar.tc.qmq.backup.store.BackupMessageLog;
+import qunar.tc.qmq.backup.store.IndexStore;
 import qunar.tc.qmq.backup.store.LocalKVStore;
 import qunar.tc.qmq.backup.store.impl.*;
+import qunar.tc.qmq.backup.web.QueryDeadLetterServlet;
 import qunar.tc.qmq.configuration.BrokerConfig;
 import qunar.tc.qmq.configuration.DynamicConfig;
 import qunar.tc.qmq.configuration.DynamicConfigLoader;
@@ -28,7 +33,7 @@ import static qunar.tc.qmq.constants.BrokerConstants.*;
  * 2/20/19
  */
 public class Bootstrap {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         DynamicConfig config = DynamicConfigLoader.load("backup.properties");
         OffsetManager offsetManager = new OffsetManager(config);
         offsetManager.start();
@@ -44,7 +49,7 @@ public class Bootstrap {
         FixedExecOrderEventBus dispatcher = new FixedExecOrderEventBus();
         DicService dicService = new DbDicService(new JdbcDicStore("qmq_dic"));
         String brokerNameId = dicService.name2Id(BrokerConfig.getBrokerName());
-        dispatcher.post(new IndexBuilder(config, new IndexServiceImpl(new HBaseIndexStore(config, brokerNameId), dicService), offsetManager));
+        dispatcher.post(new IndexBuilder(config, new IndexServiceImpl(new HBaseIndexStore(config), dicService), offsetManager));
         MessageLogIterateService iterateService = new MessageLogIterateService(messageLog, offsetManager.getMessageLogIterateOffset(), dispatcher);
         iterateService.start();
         iterateService.blockUntilReplayDone();
@@ -65,6 +70,23 @@ public class Bootstrap {
 
         DFSUploader dfsUploader = new DFSUploader(messageLog, new HDFSMessageLog(config));
         dfsUploader.start();
+
+        final ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
+        context.setContextPath("/");
+        context.setResourceBase(System.getProperty("java.io.tmpdir"));
+
+        IndexStore indexStore = new HBaseIndexStore(config);
+        IndexService indexService = new IndexServiceImpl(indexStore, dicService);
+        QueryDeadLetterServlet servlet = new QueryDeadLetterServlet(indexService);
+        ServletHolder servletHolder = new ServletHolder(servlet);
+        servletHolder.setAsyncSupported(true);
+        context.addServlet(servletHolder, "/query/*");
+
+        int port = config.getInt("gateway.port", 8080);
+        final Server server = new Server(port);
+        server.setHandler(context);
+        server.start();
+        server.join();
     }
 
     private static void safeClose(AutoCloseable closeable) {

@@ -2,8 +2,10 @@ package qunar.tc.qmq.backup.service;
 
 import qunar.tc.qmq.backup.model.Index;
 import qunar.tc.qmq.backup.model.BackupMessage;
+import qunar.tc.qmq.backup.model.Page;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Created by zhaohui.yu
@@ -14,5 +16,5 @@ public interface IndexService {
 
     Index get(String subject, long createTime, String messageId);
 
-    List<Index> scan(String subject, long startTime, int limit);
+    CompletableFuture<Page> scan(String subject, long startTime, long endTime, byte[] startKey, int limit);
 }

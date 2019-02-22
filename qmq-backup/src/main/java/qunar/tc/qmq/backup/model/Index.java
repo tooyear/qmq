@@ -15,6 +15,7 @@ public class Index {
 
     private final int size;
 
+    private String brokerName;
 
     public Index(byte[] key, byte[] messageId, long sequence, long offset, int size) {
         this.key = key;
@@ -42,5 +43,13 @@ public class Index {
 
     public byte[] getMessageId() {
         return messageId;
+    }
+
+    public String getBrokerName() {
+        return brokerName;
+    }
+
+    public void setBrokerName(String brokerName) {
+        this.brokerName = brokerName;
     }
 }

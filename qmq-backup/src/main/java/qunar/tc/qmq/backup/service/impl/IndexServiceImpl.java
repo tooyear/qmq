@@ -2,6 +2,7 @@ package qunar.tc.qmq.backup.service.impl;
 
 import qunar.tc.qmq.backup.model.BackupMessage;
 import qunar.tc.qmq.backup.model.Index;
+import qunar.tc.qmq.backup.model.Page;
 import qunar.tc.qmq.backup.service.BackupKeyGenerator;
 import qunar.tc.qmq.backup.service.DicService;
 import qunar.tc.qmq.backup.service.IndexService;
@@ -10,6 +11,7 @@ import qunar.tc.qmq.utils.RetrySubjectUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Created by zhaohui.yu
@@ -17,11 +19,13 @@ import java.util.List;
  */
 public class IndexServiceImpl implements IndexService {
 
+    private final DicService dicService;
     private final IndexStore indexStore;
 
     private final BackupKeyGenerator keyGenerator;
 
     public IndexServiceImpl(IndexStore indexStore, DicService dicService) {
+        this.dicService = dicService;
         this.indexStore = indexStore;
         this.keyGenerator = new BackupKeyGenerator(dicService);
     }
@@ -52,7 +56,12 @@ public class IndexServiceImpl implements IndexService {
     }
 
     @Override
-    public List<Index> scan(String subject, long startTime, int limit) {
-        return null;
+    public CompletableFuture<Page> scan(String subject, long startTime, long endTime, byte[] startKey, int limit) {
+        if (startKey == null) {
+            startKey = keyGenerator.generatePrefixKey(subject, startTime);
+        }
+        byte[] endKey = keyGenerator.generatePrefixKey(subject, endTime);
+        String regex = "^" + dicService.name2Id(subject) + "\\d{12}";
+        return indexStore.scan(startKey, endKey, regex, limit);
     }
 }

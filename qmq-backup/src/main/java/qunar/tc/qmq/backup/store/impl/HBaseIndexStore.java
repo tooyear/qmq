@@ -1,16 +1,16 @@
 package qunar.tc.qmq.backup.store.impl;
 
 import com.stumbleupon.async.Deferred;
-import org.hbase.async.Bytes;
-import org.hbase.async.HBaseClient;
-import org.hbase.async.PutRequest;
-import org.hbase.async.Scanner;
+import org.hbase.async.*;
 import qunar.tc.qmq.backup.model.Index;
+import qunar.tc.qmq.backup.model.Page;
 import qunar.tc.qmq.backup.store.IndexStore;
+import qunar.tc.qmq.configuration.BrokerConfig;
 import qunar.tc.qmq.configuration.DynamicConfig;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Created by zhaohui.yu
@@ -25,14 +25,16 @@ public class HBaseIndexStore extends HBaseConfig implements IndexStore {
     private final byte[] indexColumns;
 
     private final byte[] brokerName;
+    private final byte[] brokerNameLen;
 
-    public HBaseIndexStore(DynamicConfig config, String brokerNameId) {
+    public HBaseIndexStore(DynamicConfig config) {
         final org.hbase.async.Config hbaseConfig = from(config);
         this.client = new HBaseClient(hbaseConfig);
         this.indexTable = Bytes.UTF8("qmq_backup_index");
         this.indexFamily = Bytes.UTF8("i");
         this.indexColumns = Bytes.UTF8("c");
-        this.brokerName = Bytes.UTF8(brokerNameId);
+        this.brokerName = Bytes.UTF8(BrokerConfig.getBrokerName());
+        this.brokerNameLen = Bytes.fromShort((short) brokerName.length);
     }
 
 
@@ -59,6 +61,8 @@ public class HBaseIndexStore extends HBaseConfig implements IndexStore {
             System.arraycopy(Bytes.fromInt(index.getSize()), 0, value, writerIndex, 4);
             writerIndex += 4;
 
+            System.arraycopy(brokerNameLen, 0, value, writerIndex, 2);
+            writerIndex += 2;
             System.arraycopy(brokerName, 0, value, writerIndex, brokerName.length);
 
             PutRequest request = new PutRequest(indexTable, index.getKey(), indexFamily, indexColumns, value);
@@ -68,11 +72,66 @@ public class HBaseIndexStore extends HBaseConfig implements IndexStore {
     }
 
     @Override
-    public List<Index> scan(byte[] startKey, int limit) {
+    public CompletableFuture<Page> scan(byte[] startKey, byte[] endKey, String regex, int limit) {
         Scanner scanner = client.newScanner(indexTable);
         scanner.setStartKey(startKey);
+        scanner.setStopKey(endKey);
+        scanner.setKeyRegexp(regex);
         scanner.setMaxNumRows(limit);
-        scanner.nextRows();
-        return null;
+        Deferred<ArrayList<ArrayList<KeyValue>>> rows = scanner.nextRows();
+        CompletableFuture<Page> future = new CompletableFuture<>();
+        rows.addBoth(arg -> {
+            if (arg == null || arg.size() == 0) {
+                future.complete(Page.EMPTY);
+                return null;
+            }
+
+            byte[] firstKey = null;
+            byte[] stopKey = null;
+            List<Index> result = new ArrayList<>(arg.size());
+            for (int i = 0; i < arg.size(); ++i) {
+                ArrayList<KeyValue> row = arg.get(i);
+                if (row.size() == 0) continue;
+                KeyValue cell = row.get(0);
+                if (i == 0) {
+                    firstKey = cell.key();
+                }
+                if (i == (arg.size() - 1)) {
+                    stopKey = cell.key();
+                }
+                result.add(decode(cell));
+            }
+            Page page = new Page(firstKey, stopKey, result);
+            future.complete(page);
+            return null;
+        });
+        return future;
+    }
+
+    private Index decode(KeyValue cell) {
+        byte[] value = cell.value();
+
+        try {
+            int readerIndex = 0;
+            short messageIdLen = Bytes.getShort(value, readerIndex);
+            readerIndex += 2;
+            byte[] messageId = new byte[messageIdLen];
+            System.arraycopy(value, readerIndex, messageId, 0, messageIdLen);
+            readerIndex += messageIdLen;
+            long sequence = Bytes.getLong(value, readerIndex);
+            readerIndex += 8;
+            long offset = Bytes.getLong(value, readerIndex);
+            readerIndex += 8;
+            int size = Bytes.getInt(value, readerIndex);
+            readerIndex += 4;
+            short brokerNameLen = Bytes.getShort(value, readerIndex);
+            readerIndex += 2;
+            String brokerName = new String(value, readerIndex, brokerNameLen, "UTF-8");
+            Index index = new Index(cell.key(), messageId, sequence, offset, size);
+            index.setBrokerName(brokerName);
+            return index;
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

@@ -1,8 +1,10 @@
 package qunar.tc.qmq.backup.store;
 
 import qunar.tc.qmq.backup.model.Index;
+import qunar.tc.qmq.backup.model.Page;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Created by zhaohui.yu
@@ -11,5 +13,5 @@ import java.util.List;
 public interface IndexStore {
     void put(List<Index> index);
 
-    List<Index> scan(byte[] startKey, int limit);
+    CompletableFuture<Page> scan(byte[] startKey, byte[] endKey, String regex, int limit);
 }
