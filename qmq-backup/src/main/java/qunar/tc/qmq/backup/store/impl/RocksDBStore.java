@@ -9,6 +9,8 @@ import qunar.tc.qmq.backup.store.LocalKVStore;
 import qunar.tc.qmq.configuration.DynamicConfig;
 import qunar.tc.qmq.utils.CharsetUtils;
 
+import java.io.File;
+import java.nio.file.Files;
 import java.util.Optional;
 
 /**
@@ -26,8 +28,12 @@ public class RocksDBStore implements LocalKVStore {
 
     public RocksDBStore(final DynamicConfig config) {
         final String path = config.getString("rocks.db.path");
-        final int ttl = config.getInt("rocks.db.ttl");
+        final int ttl = config.getInt("rocks.db.ttl", 30 * 60);
         try {
+            File file = new File(path);
+            if (!file.exists()) {
+                Files.createDirectories(file.toPath());
+            }
             final Options options = new Options();
             options.setCreateIfMissing(true);
             this.rocksDB = TtlDB.open(options, path, ttl, false);

@@ -46,7 +46,7 @@ public class BackupKeyGenerator {
 
     private String generateDateKey(Date key) {
         String formatText = DATE_FORMATTER.get().format(key);
-        Long dateLong = MAX_LONG - Integer.parseInt(formatText);
+        Long dateLong = MAX_LONG - Long.parseLong(formatText);
         formatText = String.format(CREATE_DATE_FORMAT_PATTERN, dateLong);
         return formatText;
     }

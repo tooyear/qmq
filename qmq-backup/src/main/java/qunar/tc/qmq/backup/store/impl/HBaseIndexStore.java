@@ -30,19 +30,19 @@ public class HBaseIndexStore extends HBaseConfig implements IndexStore {
     public HBaseIndexStore(DynamicConfig config) {
         final org.hbase.async.Config hbaseConfig = from(config);
         this.client = new HBaseClient(hbaseConfig);
-        this.indexTable = Bytes.UTF8("qmq_backup_index");
+        this.indexTable = Bytes.UTF8("qmq_backup_index_v2");
         this.indexFamily = Bytes.UTF8("i");
         this.indexColumns = Bytes.UTF8("c");
         this.brokerName = Bytes.UTF8(BrokerConfig.getBrokerName());
         this.brokerNameLen = Bytes.fromShort((short) brokerName.length);
     }
 
-
     @Override
     public void put(List<Index> batch) {
+        System.out.println("receive" + batch.size());
         List<Deferred<Object>> list = new ArrayList<>(batch.size());
         for (Index index : batch) {
-            byte[] value = new byte[2 + index.getMessageId().length + 8 + 8 + 4 + brokerName.length];
+            byte[] value = new byte[2 + index.getMessageId().length + 8 + 8 + 4 + 2 + brokerName.length];
 
             int writerIndex = 0;
             byte[] len = Bytes.fromShort((short) index.getMessageId().length);

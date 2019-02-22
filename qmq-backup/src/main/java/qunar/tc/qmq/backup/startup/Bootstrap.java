@@ -3,14 +3,20 @@ package qunar.tc.qmq.backup.startup;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
-import qunar.tc.qmq.backup.service.*;
+import qunar.tc.qmq.backup.model.BackupMessage;
+import qunar.tc.qmq.backup.service.BackupKeyGenerator;
+import qunar.tc.qmq.backup.service.ConsumeTrackService;
+import qunar.tc.qmq.backup.service.DicService;
+import qunar.tc.qmq.backup.service.OffsetManager;
 import qunar.tc.qmq.backup.service.impl.DbDicService;
 import qunar.tc.qmq.backup.service.impl.IndexServiceImpl;
 import qunar.tc.qmq.backup.store.ActionStore;
 import qunar.tc.qmq.backup.store.BackupMessageLog;
-import qunar.tc.qmq.backup.store.IndexStore;
 import qunar.tc.qmq.backup.store.LocalKVStore;
-import qunar.tc.qmq.backup.store.impl.*;
+import qunar.tc.qmq.backup.store.impl.HBaseActionStore;
+import qunar.tc.qmq.backup.store.impl.HBaseIndexStore;
+import qunar.tc.qmq.backup.store.impl.JdbcDicStore;
+import qunar.tc.qmq.backup.store.impl.RocksDBStore;
 import qunar.tc.qmq.backup.web.QueryDeadLetterServlet;
 import qunar.tc.qmq.configuration.BrokerConfig;
 import qunar.tc.qmq.configuration.DynamicConfig;
@@ -49,7 +55,9 @@ public class Bootstrap {
         FixedExecOrderEventBus dispatcher = new FixedExecOrderEventBus();
         DicService dicService = new DbDicService(new JdbcDicStore("qmq_dic"));
         String brokerNameId = dicService.name2Id(BrokerConfig.getBrokerName());
-        dispatcher.post(new IndexBuilder(config, new IndexServiceImpl(new HBaseIndexStore(config), dicService), offsetManager));
+        DynamicConfig hbaseConfig = DynamicConfigLoader.load("hbase.properties");
+        IndexServiceImpl indexService = new IndexServiceImpl(new HBaseIndexStore(hbaseConfig), dicService);
+        dispatcher.subscribe(BackupMessage.class, new IndexBuilder(config, indexService, offsetManager));
         MessageLogIterateService iterateService = new MessageLogIterateService(messageLog, offsetManager.getMessageLogIterateOffset(), dispatcher);
         iterateService.start();
         iterateService.blockUntilReplayDone();
@@ -62,27 +70,27 @@ public class Bootstrap {
         ActionStore actionStore = new HBaseActionStore(config, brokerNameId, dicService, new BackupKeyGenerator(dicService));
         slaveSyncManager.registerProcessor(SyncType.action, new BackupActionLogSyncProcessor(offsetManager, new ConsumeTrackService(kvStore, actionStore)));
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            safeClose(slaveSyncManager);
+            safeClose(iterateService);
             safeClose(flushService);
             safeClose(offsetManager);
         }));
 
         slaveSyncManager.startSync();
 
-        DFSUploader dfsUploader = new DFSUploader(messageLog, new HDFSMessageLog(config));
-        dfsUploader.start();
+//        DFSUploader dfsUploader = new DFSUploader(messageLog, new HDFSMessageLog(config));
+//        dfsUploader.start();
 
         final ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
         context.setContextPath("/");
         context.setResourceBase(System.getProperty("java.io.tmpdir"));
 
-        IndexStore indexStore = new HBaseIndexStore(config);
-        IndexService indexService = new IndexServiceImpl(indexStore, dicService);
         QueryDeadLetterServlet servlet = new QueryDeadLetterServlet(indexService);
         ServletHolder servletHolder = new ServletHolder(servlet);
         servletHolder.setAsyncSupported(true);
         context.addServlet(servletHolder, "/query/*");
 
-        int port = config.getInt("gateway.port", 8080);
+        int port = config.getInt("qmqbackup.port", 8080);
         final Server server = new Server(port);
         server.setHandler(context);
         server.start();

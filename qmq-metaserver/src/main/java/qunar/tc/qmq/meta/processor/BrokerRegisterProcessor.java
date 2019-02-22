@@ -70,7 +70,8 @@ public class BrokerRegisterProcessor implements NettyRequestProcessor {
 
         LOG.info("broker register request received. request: {}", brokerRequest);
 
-        if (brokerRole == BrokerRole.SLAVE.getCode() || brokerRole == BrokerRole.DELAY_SLAVE.getCode()) {
+        if (brokerRole == BrokerRole.SLAVE.getCode()
+                || brokerRole == BrokerRole.DELAY_SLAVE.getCode()) {
             return CompletableFuture.completedFuture(handleSlave(request));
         }
 

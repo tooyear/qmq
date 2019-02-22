@@ -39,9 +39,13 @@ public class OffsetManager implements AutoCloseable {
 
     public void start() {
         Offset offset = this.store.loadCheckpoint();
-        messageLogIterateOffset = offset.messageLogIterateOffset;
-        actionSyncPoint = offset.actionSyncPoint;
-
+        if(offset == null){
+            messageLogIterateOffset = 0;
+            actionSyncPoint = 0;
+        }else {
+            messageLogIterateOffset = offset.messageLogIterateOffset;
+            actionSyncPoint = offset.actionSyncPoint;
+        }
         flushService.start();
     }
 

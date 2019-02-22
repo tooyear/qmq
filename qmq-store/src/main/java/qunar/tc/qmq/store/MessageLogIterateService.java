@@ -29,7 +29,7 @@ import java.util.concurrent.atomic.LongAdder;
  * @author keli.wang
  * @since 2017/8/23
  */
-public class MessageLogIterateService implements AutoCloseable {
+public class MessageLogIterateService<T> implements AutoCloseable {
     private static final Logger LOG = LoggerFactory.getLogger(MessageLogIterateService.class);
 
     private final MessageLog log;
@@ -52,7 +52,7 @@ public class MessageLogIterateService implements AutoCloseable {
 
     private long initialMessageIterateFrom(final MessageLog log, final long checkpoint) {
         if (checkpoint <= 0) {
-            return log.getMaxOffset();
+            return log.getMinOffset();
         }
         if (checkpoint > log.getMaxOffset()) {
             return log.getMaxOffset();
@@ -114,7 +114,7 @@ public class MessageLogIterateService implements AutoCloseable {
             }
 
             while (true) {
-                final Optional<MessageLogMeta> meta = visitor.nextRecord();
+                final Optional<T> meta = visitor.nextRecord();
                 if (meta == null) {
                     break;
                 }

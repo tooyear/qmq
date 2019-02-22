@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit;
  * @author yunfeng.yang
  * @since 2017/8/18
  */
-public class MasterSlaveSyncManager implements Disposable {
+public class MasterSlaveSyncManager implements AutoCloseable, Disposable {
     private static final Logger LOG = LoggerFactory.getLogger(MasterSlaveSyncManager.class);
 
     private final SlaveSyncClient slaveSyncClient;
@@ -53,7 +53,7 @@ public class MasterSlaveSyncManager implements Disposable {
     }
 
     @Override
-    public void destroy() {
+    public void close() {
         for (SlaveSyncTask task : slaveSyncTasks.values()) {
             try {
                 task.shutdown();
@@ -62,6 +62,12 @@ public class MasterSlaveSyncManager implements Disposable {
             }
         }
     }
+
+    @Override
+    public void destroy() {
+        close();
+    }
+
 
     private class SlaveSyncTask implements Runnable {
         private final SyncLogProcessor processor;
