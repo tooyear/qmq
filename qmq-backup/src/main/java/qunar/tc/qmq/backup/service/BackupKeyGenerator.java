@@ -12,9 +12,8 @@ import java.util.Date;
  */
 public class BackupKeyGenerator {
     private static final String DATE_FORMAT_PATTERN = "yyMMddHHmmss";
-    private static final String CREATE_DATE_FORMAT_PATTERN = "%10d";
-    private static final long MAX_LONG = 9999999999L;
-
+    private static final String CREATE_DATE_FORMAT_PATTERN = "%12d";
+    private static final long MAX_LONG = 999999999999L;
 
     private static final ThreadLocal<SimpleDateFormat> DATE_FORMATTER = ThreadLocal.withInitial(() -> new SimpleDateFormat(DATE_FORMAT_PATTERN));
 
